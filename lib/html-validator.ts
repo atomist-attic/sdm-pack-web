@@ -25,7 +25,6 @@ import {
 import {
     AutoInspectRegistration,
     CodeInspection,
-    CodeInspectionRegistration,
     DefaultGoalNameGenerator,
     LoggingProgressLog,
     PushTest,
