@@ -36,7 +36,7 @@ import * as path from "path";
  * @param sitePath path to web site relative to root of project
  * @return function that takes a project and returns ReviewComments
  */
-function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview, NoParameters> {
+export function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview, NoParameters> {
     return async (p, papi) => {
         const slug = `${p.id.owner}/${p.id.repo}`;
         const log = papi.progressLog || new LoggingProgressLog("html-validator");
@@ -92,16 +92,16 @@ function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview, NoPar
 }
 
 /**
- * Run [html-validator](https://www.npmjs.com/package/html-validator),
+ * Provide code inspection registration that runs
+ * [html-validator](https://www.npmjs.com/package/html-validator),
  * which uses the [Nu Html Checker](https://validator.w3.org/nu/), to
  * validate a generated web site at `sitePath`.
  */
 export function htmlValidatorInspection(sitePath: string): CodeInspectionRegistration<ProjectReview, NoParameters> {
     return {
-        name: "RunHtmlValidator",
+        name: `html-validator-${sitePath}`,
         description: "Run htmltest on website",
         inspection: runHtmlValidator(sitePath),
-        repoFilter: r => r.owner === "atomisthq" && r.repo === "web-site",
     };
 }
 

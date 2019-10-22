@@ -14,5 +14,8 @@
  * limitations under the License.
  */
 
-export { htmlValidatorInspection } from "./lib/html-validator";
+export {
+    htmlValidatorInspection,
+    runHtmlValidator,
+} from "./lib/html-validator";
 export { WebSupport } from "./lib/web";
