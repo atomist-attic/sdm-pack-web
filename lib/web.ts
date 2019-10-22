@@ -19,7 +19,10 @@ import {
     metadata,
 } from "@atomist/sdm";
 
-export const SeedSupport: ExtensionPack = {
+/**
+ * Currently this extension does not add anything automatically.
+ */
+export const WebSupport: ExtensionPack = {
     ...metadata(),
     configure: sdm => {
         return sdm;

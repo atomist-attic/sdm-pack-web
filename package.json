@@ -23,7 +23,11 @@
   ],
   "main": "./index.js",
   "types": "./index.d.ts",
-  "dependencies": {},
+  "dependencies": {
+    "@types/html-validator": "^4.1.0",
+    "@types/node": "^12.11.2",
+    "html-validator": "^5.0.0"
+  },
   "peerDependencies": {
     "@atomist/automation-client": "^1.7.0",
     "@atomist/sdm": "^1.7.0",
