@@ -23,9 +23,12 @@ import {
     ReviewComment,
 } from "@atomist/automation-client";
 import {
+    AutoInspectRegistration,
     CodeInspection,
     CodeInspectionRegistration,
+    DefaultGoalNameGenerator,
     LoggingProgressLog,
+    PushTest,
 } from "@atomist/sdm";
 import * as hv from "html-validator";
 import * as path from "path";
@@ -92,16 +95,16 @@ export function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview
 }
 
 /**
- * Provide code inspection registration that runs
+ * Provide auto inspection registration that runs
  * [html-validator](https://www.npmjs.com/package/html-validator),
  * which uses the [Nu Html Checker](https://validator.w3.org/nu/), to
  * validate a generated web site at `sitePath`.
  */
-export function htmlValidatorInspection(sitePath: string): CodeInspectionRegistration<ProjectReview, NoParameters> {
+export function htmlValidatorAutoInspection(sitePath: string, pushTest?: PushTest): AutoInspectRegistration<ProjectReview, NoParameters> {
     return {
-        name: `html-validator-${sitePath}`,
-        description: "Run htmltest on website",
+        name: DefaultGoalNameGenerator.generateName(`html-validator-${sitePath}-auto-inspection`),
         inspection: runHtmlValidator(sitePath),
+        pushTest,
     };
 }
 
