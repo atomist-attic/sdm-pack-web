@@ -96,7 +96,7 @@ function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview, NoPar
  * which uses the [Nu Html Checker](https://validator.w3.org/nu/), to
  * validate a generated web site at `sitePath`.
  */
-export function HtmlValidatorInspection(sitePath: string): CodeInspectionRegistration<ProjectReview, NoParameters> {
+export function htmlValidatorInspection(sitePath: string): CodeInspectionRegistration<ProjectReview, NoParameters> {
     return {
         name: "RunHtmlValidator",
         description: "Run htmltest on website",
