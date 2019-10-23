@@ -79,7 +79,7 @@ export function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview
                     headers: {
                         "Content-Type": contentType,
                     },
-                } as any); // https://github.com/DefinitelyTyped/DefinitelyTyped/pull/39313
+                });
                 log.write(`Results from ${f.path}:${htmlValidatorMessagesToString(result.messages)}`);
                 const comments = htmlValidatorMessagesToReviewComments(f.path, result.messages);
                 review.comments.push(...comments);
