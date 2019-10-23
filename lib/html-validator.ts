@@ -65,14 +65,7 @@ export function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview
                     log.write(`No content in ${f.path}`);
                     return;
                 }
-                let contentType: string;
-                if (f.path.endsWith(".svg")) {
-                    contentType = "image/svg+xml";
-                } else if (f.path.endsWith(".css")) {
-                    contentType = "text/css";
-                } else {
-                    contentType = "text/html";
-                }
+                const contentType = mimeType(f.path);
                 const result = await hv({
                     data: content,
                     format: "json",
@@ -108,6 +101,21 @@ export function htmlValidatorAutoInspection(sitePath: string, pushTest?: PushTes
 }
 
 /**
+ * Determine and return MIME type for provided file path.
+ *
+ * @param filePath file name including extension
+ */
+function mimeType(filePath: string): "image/svg+xml" | "text/css" | "text/html" {
+    if (filePath.endsWith(".svg")) {
+        return "image/svg+xml";
+    } else if (filePath.endsWith(".css")) {
+        return "text/css";
+    } else {
+        return "text/html";
+    }
+}
+
+/**
  * Convert html-validator messages to a string suitable to write to
  * the progress log.
  *
@@ -121,14 +129,8 @@ export function htmlValidatorMessagesToString(messages: hv.ValidationMessageObje
     const summaries = messages.map(m => {
         const kind = m.subType || m.type;
         let position: string = "";
-        if (m.lastLine) {
-            position += m.lastLine.toString(10);
-        }
-        if (m.lastColumn) {
-            position += ":" + m.lastColumn.toString(10);
-        }
-        if (position) {
-            position = `[${position}] `;
+        if (hasLocation(m)) {
+            position = `[${m.lastLine.toString(10)}:${m.lastColumn.toString(10)}] `;
         }
         return `${position}${kind}: ${m.message}`;
     });
@@ -147,19 +149,58 @@ export function htmlValidatorMessagesToString(messages: hv.ValidationMessageObje
  * @return Code inspection review comments
  */
 export function htmlValidatorMessagesToReviewComments(src: string, messages: hv.ValidationMessageObject[]): ReviewComment[] {
+    if (!messages || messages.length < 1) {
+        return [];
+    }
     const subcategory = (src.endsWith(".css")) ? "css" : ((src.endsWith(".svg")) ? "svg" : "html");
-    return messages.filter(m => m.type !== "info").map(m => {
+    return messages.filter(infoFilter).map(m => {
+        const sourceLocation = {
+            path: src,
+            offset: 0,
+            columnFrom1: 0,
+            lineFrom1: 0,
+        };
+        if (hasLocation(m)) {
+            sourceLocation.columnFrom1 = m.lastColumn;
+            sourceLocation.lineFrom1 = m.lastLine;
+            sourceLocation.offset = m.hiliteStart; // technically not correct
+        }
         return {
             category: "html-validator",
             detail: m.message,
             severity: (m.subType === "warning") ? "warn" : "error",
-            sourceLocation: {
-                path: src,
-                columnFrom1: m.lastColumn,
-                lineFrom1: m.lastLine,
-                offset: m.hiliteStart,
-            },
+            sourceLocation,
             subcategory,
         };
     });
 }
+
+/**
+ * Return false if messages is a non-warning info message, true
+ * otherwise.  Use to filter out info messages that are not warnings.
+ *
+ * @param m Message to test
+ */
+function infoFilter(m: hv.ValidationMessageObject): boolean {
+    if (m.type === "info") {
+        if (m.subType === "warning") {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return true;
+    }
+}
+
+/**
+ * Test if message has location properties.
+ */
+function hasLocation(m: hv.ValidationMessageObject): boolean {
+    return !!m.extract;
+}
+/*
+function hasLocation(m: hv.ValidationMessageObject): m is hv.ValidationMessageLocationObject {
+    return !!(m as hv.ValidationMessageLocationObject).extract;
+}
+*/

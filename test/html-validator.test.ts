@@ -25,25 +25,36 @@ describe("html-validator", () => {
     describe("htmlValidatorMessagesToReviewComments", () => {
 
         it("returns no comments when given no messages", () => {
-            const c = htmlValidatorMessagesToReviewComments("chuck", []);
-            assert(c.length === 0);
+            [undefined, []].forEach((m: any) => {
+                const c = htmlValidatorMessagesToReviewComments("chuck", m);
+                assert(c.length === 0);
+            });
         });
 
-        it("filters out info messages", () => {
+        it("filters out non-warning info messages", () => {
             const m: any[] = [
-                { type: "info", message: "what?", hiliteStart: 0, lastColumn: 0, lastLine: 0 },
-                { type: "info", message: "huh?", hiliteStart: 1, lastColumn: 1, lastLine: 1 },
-                { type: "info", message: "no?", hiliteStart: 2, lastColumn: 2, lastLine: 2 },
+                { type: "info", message: "what?" },
+                { type: "info", subType: "warning", message: "huh?", extract: "x", hiliteStart: 8, lastColumn: 7, lastLine: 6 },
+                { type: "info", message: "no?", extract: "x", hiliteStart: 2, lastColumn: 2, lastLine: 2 },
             ];
-            const c = htmlValidatorMessagesToReviewComments("nuck", m);
-            assert(c.length === 0);
+            const c = htmlValidatorMessagesToReviewComments("chuck.html", m);
+            const e = [
+                {
+                    category: "html-validator",
+                    detail: "huh?",
+                    severity: "warn",
+                    sourceLocation: { path: "chuck.html", offset: 8, columnFrom1: 7, lineFrom1: 6 },
+                    subcategory: "html",
+                },
+            ];
+            assert.deepStrictEqual(c, e);
         });
 
         it("converts error messages to comments", () => {
             const m: any[] = [
-                { type: "error", message: "what?", hiliteStart: 0, lastColumn: 1, lastLine: 3 },
-                { type: "error", message: "huh?", hiliteStart: 4, lastColumn: 5, lastLine: 6 },
-                { type: "error", message: "no?", hiliteStart: 9, lastColumn: 8, lastLine: 7 },
+                { type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 },
+                { type: "error", message: "huh?", extract: "x", hiliteStart: 4, lastColumn: 5, lastLine: 6 },
+                { type: "error", message: "no?", extract: "x", hiliteStart: 9, lastColumn: 8, lastLine: 7 },
             ];
             const c = htmlValidatorMessagesToReviewComments("chock.html", m);
             const e = [
@@ -72,23 +83,8 @@ describe("html-validator", () => {
             assert.deepStrictEqual(c, e);
         });
 
-        it("recognizes warnings", () => {
-            const m: any[] = [{ type: "error", subType: "warning", message: "what?", hiliteStart: 0, lastColumn: 1, lastLine: 3 }];
-            const c = htmlValidatorMessagesToReviewComments("chock.html", m);
-            const e = [
-                {
-                    category: "html-validator",
-                    detail: "what?",
-                    severity: "warn",
-                    sourceLocation: { path: "chock.html", offset: 0, columnFrom1: 1, lineFrom1: 3 },
-                    subcategory: "html",
-                },
-            ];
-            assert.deepStrictEqual(c, e);
-        });
-
         it("categorizes css and svg", () => {
-            const m: any[] = [{ type: "error", message: "what?", hiliteStart: 0, lastColumn: 1, lastLine: 3 }];
+            const m: any[] = [{ type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 }];
             ["css", "svg", "html"].forEach(t => {
                 const c = htmlValidatorMessagesToReviewComments(`chock.${t}`, m);
                 const e = [
@@ -127,18 +123,20 @@ describe("html-validator", () => {
         it("puts each message on its own line", () => {
             const m: any[] = [
                 { type: "info", message: "what?" },
-                { type: "error", message: "huh?", hiliteStart: 0, lastColumn: 1, lastLine: 2 },
-                { type: "error", subType: "warning", message: "no?", hiliteStart: 5, lastColumn: 4, lastLine: 3 },
-                { type: "error", message: "some?", hiliteStart: 0, lastLine: 6 },
-                { type: "error", subType: "warning", message: "where?", hiliteStart: 7, lastColumn: 8 },
+                { type: "error", message: "huh?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 2 },
+                { type: "info", subType: "warning", extract: "x", message: "no?", hiliteStart: 5, lastColumn: 4, lastLine: 3 },
+                { type: "error", message: "some?" },
+                { type: "non-document-error", subType: "io", message: "Non-XML Content-Type: “application/pdf”." },
+                { type: "info", subType: "warning", message: "where?" },
             ];
             const s = htmlValidatorMessagesToString(m);
             const e = `
   info: what?
   [2:1] error: huh?
   [3:4] warning: no?
-  [6] error: some?
-  [:8] warning: where?`;
+  error: some?
+  io: Non-XML Content-Type: “application/pdf”.
+  warning: where?`;
             assert(s === e);
         });
 
