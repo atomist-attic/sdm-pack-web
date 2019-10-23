@@ -33,12 +33,20 @@ import * as hv from "html-validator";
 import * as path from "path";
 
 /**
+ * Function that maps the path to a file in the site directory to the
+ * path to a file in the source directory.
+ */
+export type SiteToSrc = (s: string) => string;
+const noOpSiteToSrc: SiteToSrc = s => s;
+
+/**
  * Run html-validator on `sitePath` and convert results to ReviewComments.
  *
  * @param sitePath path to web site relative to root of project
+ * @param siteToSrc Function that maps a site file path to a source file path in the project
  * @return function that takes a project and returns ReviewComments
  */
-export function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview, NoParameters> {
+export function runHtmlValidator(sitePath: string, siteToSrc: SiteToSrc = noOpSiteToSrc): CodeInspection<ProjectReview, NoParameters> {
     return async (p, papi) => {
         const slug = `${p.id.owner}/${p.id.repo}`;
         const log = papi.progressLog || new LoggingProgressLog("html-validator");
@@ -73,7 +81,8 @@ export function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview
                         "Content-Type": contentType,
                     },
                 });
-                const comments = htmlValidatorMessagesToReviewComments(f.path, result.messages);
+                const src = siteToSrc(f.path);
+                const comments = htmlValidatorMessagesToReviewComments(src, result.messages);
                 review.comments.push(...comments);
             });
         } catch (e) {
