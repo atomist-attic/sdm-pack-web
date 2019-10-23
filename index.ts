@@ -17,5 +17,5 @@
 export {
     htmlValidatorAutoInspection,
     runHtmlValidator,
-} from "./lib/html-validator";
+} from "./lib/htmlValidator";
 export { WebSupport } from "./lib/web";

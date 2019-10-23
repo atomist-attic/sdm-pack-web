@@ -73,7 +73,6 @@ export function runHtmlValidator(sitePath: string): CodeInspection<ProjectReview
                         "Content-Type": contentType,
                     },
                 });
-                log.write(`Results from ${f.path}:${htmlValidatorMessagesToString(result.messages)}`);
                 const comments = htmlValidatorMessagesToReviewComments(f.path, result.messages);
                 review.comments.push(...comments);
             });
@@ -112,32 +111,6 @@ function mimeType(filePath: string): "image/svg+xml" | "text/css" | "text/html" 
         return "text/css";
     } else {
         return "text/html";
-    }
-}
-
-/**
- * Convert html-validator messages to a string suitable to write to
- * the progress log.
- *
- * @param messages html-validator response messages
- * @return String representation of messages
- */
-export function htmlValidatorMessagesToString(messages: hv.ValidationMessageObject[]): string {
-    if (!messages || messages.length < 1) {
-        return " no results";
-    }
-    const summaries = messages.map(m => {
-        const kind = m.subType || m.type;
-        let position: string = "";
-        if (hasLocation(m)) {
-            position = `[${m.lastLine.toString(10)}:${m.lastColumn.toString(10)}] `;
-        }
-        return `${position}${kind}: ${m.message}`;
-    });
-    if (summaries.length === 1) {
-        return " " + summaries[0];
-    } else {
-        return "\n" + summaries.map(s => "  " + s).join("\n");
     }
 }
 

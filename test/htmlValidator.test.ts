@@ -15,12 +15,9 @@
  */
 
 import * as assert from "power-assert";
-import {
-    htmlValidatorMessagesToReviewComments,
-    htmlValidatorMessagesToString,
-} from "../lib/html-validator";
+import { htmlValidatorMessagesToReviewComments } from "../lib/htmlValidator";
 
-describe("html-validator", () => {
+describe("htmlValidator", () => {
 
     describe("htmlValidatorMessagesToReviewComments", () => {
 
@@ -99,45 +96,6 @@ describe("html-validator", () => {
                 assert.deepStrictEqual(c, e);
             });
 
-        });
-
-    });
-
-    describe("htmlValidatorMessagesToString", () => {
-
-        it("handles no comments", () => {
-            [undefined, []].forEach((m: any) => {
-                assert(htmlValidatorMessagesToString(m) === " no results");
-            });
-        });
-
-        it("put single message on its own line", () => {
-            const m: any[] = [
-                { type: "info", message: "Using the preset for SVG 1.1 + URL + HTML + MathML 3.0 based on the root namespace." },
-            ];
-            const s = htmlValidatorMessagesToString(m);
-            const e = " info: Using the preset for SVG 1.1 + URL + HTML + MathML 3.0 based on the root namespace.";
-            assert(s === e);
-        });
-
-        it("puts each message on its own line", () => {
-            const m: any[] = [
-                { type: "info", message: "what?" },
-                { type: "error", message: "huh?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 2 },
-                { type: "info", subType: "warning", extract: "x", message: "no?", hiliteStart: 5, lastColumn: 4, lastLine: 3 },
-                { type: "error", message: "some?" },
-                { type: "non-document-error", subType: "io", message: "Non-XML Content-Type: “application/pdf”." },
-                { type: "info", subType: "warning", message: "where?" },
-            ];
-            const s = htmlValidatorMessagesToString(m);
-            const e = `
-  info: what?
-  [2:1] error: huh?
-  [3:4] warning: no?
-  error: some?
-  io: Non-XML Content-Type: “application/pdf”.
-  warning: where?`;
-            assert(s === e);
         });
 
     });
