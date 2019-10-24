@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+import { SourceLocation } from "@atomist/automation-client";
 import * as assert from "power-assert";
-import { htmlValidatorMessagesToReviewComments } from "../lib/htmlValidator";
+import {
+    htmlValidatorMessagesToReviewComments,
+    noOpSiteToSource,
+} from "../lib/htmlValidator";
 
 describe("htmlValidator", () => {
 
@@ -23,7 +27,8 @@ describe("htmlValidator", () => {
 
         it("returns no comments when given no messages", () => {
             [undefined, []].forEach((m: any) => {
-                const c = htmlValidatorMessagesToReviewComments("chuck", m);
+                const a = { path: "chuck.html", siteToSource: noOpSiteToSource, messages: m };
+                const c = htmlValidatorMessagesToReviewComments(a);
                 assert(c.length === 0);
             });
         });
@@ -34,7 +39,8 @@ describe("htmlValidator", () => {
                 { type: "info", subType: "warning", message: "huh?", extract: "x", hiliteStart: 8, lastColumn: 7, lastLine: 6 },
                 { type: "info", message: "no?", extract: "x", hiliteStart: 2, lastColumn: 2, lastLine: 2 },
             ];
-            const c = htmlValidatorMessagesToReviewComments("chuck.html", m);
+            const a = { path: "chuck.html", siteToSource: noOpSiteToSource, messages: m };
+            const c = htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
                     category: "html-validator",
@@ -53,7 +59,8 @@ describe("htmlValidator", () => {
                 { type: "error", message: "huh?", extract: "x", hiliteStart: 4, lastColumn: 5, lastLine: 6 },
                 { type: "error", message: "no?", extract: "x", hiliteStart: 9, lastColumn: 8, lastLine: 7 },
             ];
-            const c = htmlValidatorMessagesToReviewComments("chock.html", m);
+            const a = { path: "chock.html", siteToSource: noOpSiteToSource, messages: m };
+            const c = htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
                     category: "html-validator",
@@ -83,7 +90,8 @@ describe("htmlValidator", () => {
         it("categorizes css and svg", () => {
             const m: any[] = [{ type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 }];
             ["css", "svg", "html"].forEach(t => {
-                const c = htmlValidatorMessagesToReviewComments(`chock.${t}`, m);
+                const a = { path: `chock.${t}`, siteToSource: noOpSiteToSource, messages: m };
+                const c = htmlValidatorMessagesToReviewComments(a);
                 const e = [
                     {
                         category: "html-validator",
@@ -96,6 +104,51 @@ describe("htmlValidator", () => {
                 assert.deepStrictEqual(c, e);
             });
 
+        });
+
+        it("uses the provided site to source mapping", () => {
+            const m: any[] = [
+                { type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 },
+                { type: "error", message: "huh?", extract: "x", hiliteStart: 4, lastColumn: 5, lastLine: 6 },
+                { type: "error", message: "no?", extract: "x", hiliteStart: 9, lastColumn: 8, lastLine: 7 },
+            ];
+            let transformed = false;
+            const s2s = (i: SourceLocation) => {
+                transformed = true;
+                return {
+                    path: i.path.replace(/^_site\//, "doc/"),
+                    offset: i.offset * 10,
+                    columnFrom1: (i.columnFrom1 || -100) + 2,
+                    lineFrom1: (i.lineFrom1 || -1000) - 1,
+                };
+            };
+            const a = { path: "_site/chock.html", siteToSource: s2s, messages: m };
+            const c = htmlValidatorMessagesToReviewComments(a);
+            const e = [
+                {
+                    category: "html-validator",
+                    detail: "what?",
+                    severity: "error",
+                    sourceLocation: { path: "doc/chock.html", offset: 0, columnFrom1: 3, lineFrom1: 2 },
+                    subcategory: "html",
+                },
+                {
+                    category: "html-validator",
+                    detail: "huh?",
+                    severity: "error",
+                    sourceLocation: { path: "doc/chock.html", offset: 40, columnFrom1: 7, lineFrom1: 5 },
+                    subcategory: "html",
+                },
+                {
+                    category: "html-validator",
+                    detail: "no?",
+                    severity: "error",
+                    sourceLocation: { path: "doc/chock.html", offset: 90, columnFrom1: 10, lineFrom1: 6 },
+                    subcategory: "html",
+                },
+            ];
+            assert(transformed, "provided site to source location map not used");
+            assert.deepStrictEqual(c, e);
         });
 
     });

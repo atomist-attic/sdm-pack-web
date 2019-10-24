@@ -21,6 +21,7 @@ import {
     ProjectReview,
     projectUtils,
     ReviewComment,
+    SourceLocation,
 } from "@atomist/automation-client";
 import {
     AutoInspectRegistration,
@@ -36,17 +37,24 @@ import * as path from "path";
  * Function that maps the path to a file in the site directory to the
  * path to a file in the source directory.
  */
-export type SiteToSrc = (s: string) => string;
-const noOpSiteToSrc: SiteToSrc = s => s;
+export type SiteLocationToSourceLocation = (s: SourceLocation) => SourceLocation;
+export const noOpSiteToSource: SiteLocationToSourceLocation = s => s;
+
+/** [[runHtmlValidator]] arguments. */
+export interface RunHtmlValidatorOptions {
+    /** Path to the website relative to the root of the project. */
+    sitePath: string;
+    /** Function that maps a site file location to a source file location in the project. */
+    siteToSource?: SiteLocationToSourceLocation;
+}
 
 /**
- * Run html-validator on `sitePath` and convert results to ReviewComments.
+ * Run html-validator on the site convert results to ReviewComments.
  *
- * @param sitePath path to web site relative to root of project
- * @param siteToSrc Function that maps a site file path to a source file path in the project
+ * @param arg Object providing location of site and other details
  * @return function that takes a project and returns ReviewComments
  */
-export function runHtmlValidator(sitePath: string, siteToSrc: SiteToSrc = noOpSiteToSrc): CodeInspection<ProjectReview, NoParameters> {
+export function runHtmlValidator(arg: RunHtmlValidatorOptions): CodeInspection<ProjectReview, NoParameters> {
     return async (p, papi) => {
         const slug = `${p.id.owner}/${p.id.repo}`;
         const log = papi.progressLog || new LoggingProgressLog("html-validator");
@@ -57,16 +65,16 @@ export function runHtmlValidator(sitePath: string, siteToSrc: SiteToSrc = noOpSi
             log.write(msg);
             return review;
         }
-        if (!await p.hasDirectory(sitePath)) {
-            const msg = `Project ${slug} does not have site directory '${sitePath}'`;
+        if (!await p.hasDirectory(arg.sitePath)) {
+            const msg = `Project ${slug} does not have site directory '${arg.sitePath}'`;
             logger.warn(msg);
             log.write(msg);
             return review;
         }
-        const absPath = path.join(p.baseDir, sitePath);
+        const absPath = path.join(p.baseDir, arg.sitePath);
         log.write(`Running html-validator on ${slug} at '${absPath}'`);
         try {
-            await projectUtils.doWithFiles(p, `${sitePath}/**/*.{html,css,svg}`, async f => {
+            await projectUtils.doWithFiles(p, `${arg.sitePath}/**/*.{html,css,svg}`, async f => {
                 log.write(`Processing ${f.path}...`);
                 const content = await f.getContent();
                 if (!content) {
@@ -81,8 +89,8 @@ export function runHtmlValidator(sitePath: string, siteToSrc: SiteToSrc = noOpSi
                         "Content-Type": contentType,
                     },
                 });
-                const src = siteToSrc(f.path);
-                const comments = htmlValidatorMessagesToReviewComments(src, result.messages);
+                const siteToSource = arg.siteToSource || noOpSiteToSource;
+                const comments = htmlValidatorMessagesToReviewComments({ path: f.path, siteToSource, messages: result.messages });
                 review.comments.push(...comments);
             });
         } catch (e) {
@@ -100,10 +108,10 @@ export function runHtmlValidator(sitePath: string, siteToSrc: SiteToSrc = noOpSi
  * which uses the [Nu Html Checker](https://validator.w3.org/nu/), to
  * validate a generated web site at `sitePath`.
  */
-export function htmlValidatorAutoInspection(sitePath: string, pushTest?: PushTest): AutoInspectRegistration<ProjectReview, NoParameters> {
+export function htmlValidatorAutoInspection(arg: RunHtmlValidatorOptions, pushTest?: PushTest): AutoInspectRegistration<ProjectReview, NoParameters> {
     return {
-        name: DefaultGoalNameGenerator.generateName(`html-validator-${sitePath}-auto-inspection`),
-        inspection: runHtmlValidator(sitePath),
+        name: DefaultGoalNameGenerator.generateName(`html-validator-${arg.sitePath}-auto-inspection`),
+        inspection: runHtmlValidator(arg),
         pushTest,
     };
 }
@@ -123,6 +131,16 @@ function mimeType(filePath: string): "image/svg+xml" | "text/css" | "text/html" 
     }
 }
 
+/** [[htmlValidatorMessagesToReviewComments]] arguments. */
+export interface HtmlValidatorMessagesToReviewCommentsArgs {
+    /** Path to the site file relative to the root of the project. */
+    path: string;
+    /** */
+    siteToSource: SiteLocationToSourceLocation;
+    /** */
+    messages: hv.ValidationMessageObject[];
+}
+
 /**
  * Convert html-validator messages to review comments.
  *
@@ -130,23 +148,13 @@ function mimeType(filePath: string): "image/svg+xml" | "text/css" | "text/html" 
  * @param messages html-validator response messages
  * @return Code inspection review comments
  */
-export function htmlValidatorMessagesToReviewComments(src: string, messages: hv.ValidationMessageObject[]): ReviewComment[] {
-    if (!messages || messages.length < 1) {
+export function htmlValidatorMessagesToReviewComments(arg: HtmlValidatorMessagesToReviewCommentsArgs): ReviewComment[] {
+    if (!arg.messages || arg.messages.length < 1) {
         return [];
     }
-    const subcategory = (src.endsWith(".css")) ? "css" : ((src.endsWith(".svg")) ? "svg" : "html");
-    return messages.filter(infoFilter).map(m => {
-        const sourceLocation = {
-            path: src,
-            offset: 0,
-            columnFrom1: 0,
-            lineFrom1: 0,
-        };
-        if (hasLocation(m)) {
-            sourceLocation.columnFrom1 = m.lastColumn;
-            sourceLocation.lineFrom1 = m.lastLine;
-            sourceLocation.offset = m.hiliteStart; // technically not correct
-        }
+    const subcategory = (arg.path.endsWith(".css")) ? "css" : ((arg.path.endsWith(".svg")) ? "svg" : "html");
+    return arg.messages.filter(infoFilter).map(m => {
+        const sourceLocation = arg.siteToSource(createSourceLocation(arg.path, m));
         return {
             category: "html-validator",
             detail: m.message,
@@ -173,6 +181,31 @@ function infoFilter(m: hv.ValidationMessageObject): boolean {
     } else {
         return true;
     }
+}
+
+/**
+ * Create SourceLocation object from source file path and
+ * html-validator message.  html-validator does not provide a true
+ * offset, so we use the hilite offset within the extract as that
+ * value.
+ *
+ * @param src Path to source file relative to project root
+ * @param message html-validator response message
+ * @return SourceLocation object
+ */
+function createSourceLocation(src: string, message: hv.ValidationMessageObject): SourceLocation {
+    const sourceLocation = {
+        path: src,
+        offset: 0,
+        columnFrom1: 0,
+        lineFrom1: 0,
+    };
+    if (hasLocation(message)) {
+        sourceLocation.columnFrom1 = message.lastColumn;
+        sourceLocation.lineFrom1 = message.lastLine;
+        sourceLocation.offset = message.hiliteStart;
+    }
+    return sourceLocation;
 }
 
 /**
