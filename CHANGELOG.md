@@ -10,3 +10,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 -   html-validator code inspection. [bb28634](https://github.com/atomist/sdm-pack-web/commit/bb286344d1f889a81f3370559d661ff1f92d93bc)
+-   Add fetch goal. [6535640](https://github.com/atomist/sdm-pack-web/commit/6535640a99dcfd57a633bbd6ff3d775af59cafa2)
