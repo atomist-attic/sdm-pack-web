@@ -18,6 +18,7 @@ import {
     isLocalProject,
     logger,
     NoParameters,
+    Project,
     ProjectReview,
     projectUtils,
     ReviewComment,
@@ -37,7 +38,7 @@ import * as path from "path";
  * Function that maps the path to a file in the site directory to the
  * path to a file in the source directory.
  */
-export type SiteLocationToSourceLocation = (s: SourceLocation) => SourceLocation;
+export type SiteLocationToSourceLocation = (s: SourceLocation, p: Project) => SourceLocation;
 export const noOpSiteToSource: SiteLocationToSourceLocation = s => s;
 
 /** [[runHtmlValidator]] arguments. */
@@ -90,7 +91,8 @@ export function runHtmlValidator(arg: RunHtmlValidatorOptions): CodeInspection<P
                     },
                 });
                 const siteToSource = arg.siteToSource || noOpSiteToSource;
-                const comments = htmlValidatorMessagesToReviewComments({ path: f.path, siteToSource, messages: result.messages });
+                const convertArgs = { messages: result.messages, path: f.path, project: p, siteToSource };
+                const comments = htmlValidatorMessagesToReviewComments(convertArgs);
                 review.comments.push(...comments);
             });
         } catch (e) {
@@ -133,12 +135,14 @@ function mimeType(filePath: string): "image/svg+xml" | "text/css" | "text/html" 
 
 /** [[htmlValidatorMessagesToReviewComments]] arguments. */
 export interface HtmlValidatorMessagesToReviewCommentsArgs {
+    /** html-validator response messages for path. */
+    messages: hv.ValidationMessageObject[];
     /** Path to the site file relative to the root of the project. */
     path: string;
-    /** */
+    /** Project of website. */
+    project: Project;
+    /** Mapping from site location to source location. */
     siteToSource: SiteLocationToSourceLocation;
-    /** */
-    messages: hv.ValidationMessageObject[];
 }
 
 /**
@@ -154,7 +158,7 @@ export function htmlValidatorMessagesToReviewComments(arg: HtmlValidatorMessages
     }
     const subcategory = (arg.path.endsWith(".css")) ? "css" : ((arg.path.endsWith(".svg")) ? "svg" : "html");
     return arg.messages.filter(infoFilter).map(m => {
-        const sourceLocation = arg.siteToSource(createSourceLocation(arg.path, m));
+        const sourceLocation = arg.siteToSource(createSourceLocation(arg.path, m), arg.project);
         return {
             category: "html-validator",
             detail: m.message,

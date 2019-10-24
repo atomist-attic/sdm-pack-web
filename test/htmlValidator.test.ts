@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-import { SourceLocation } from "@atomist/automation-client";
+import {
+    InMemoryProject,
+    SourceLocation,
+} from "@atomist/automation-client";
 import * as assert from "power-assert";
 import {
     htmlValidatorMessagesToReviewComments,
@@ -27,19 +30,21 @@ describe("htmlValidator", () => {
 
         it("returns no comments when given no messages", () => {
             [undefined, []].forEach((m: any) => {
-                const a = { path: "chuck.html", siteToSource: noOpSiteToSource, messages: m };
+                const p = InMemoryProject.of();
+                const a = { path: "chuck.html", project: p, siteToSource: noOpSiteToSource, messages: m };
                 const c = htmlValidatorMessagesToReviewComments(a);
                 assert(c.length === 0);
             });
         });
 
         it("filters out non-warning info messages", () => {
+            const p = InMemoryProject.of();
             const m: any[] = [
                 { type: "info", message: "what?" },
                 { type: "info", subType: "warning", message: "huh?", extract: "x", hiliteStart: 8, lastColumn: 7, lastLine: 6 },
                 { type: "info", message: "no?", extract: "x", hiliteStart: 2, lastColumn: 2, lastLine: 2 },
             ];
-            const a = { path: "chuck.html", siteToSource: noOpSiteToSource, messages: m };
+            const a = { path: "chuck.html", project: p, siteToSource: noOpSiteToSource, messages: m };
             const c = htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
@@ -54,12 +59,13 @@ describe("htmlValidator", () => {
         });
 
         it("converts error messages to comments", () => {
+            const p = InMemoryProject.of();
             const m: any[] = [
                 { type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 },
                 { type: "error", message: "huh?", extract: "x", hiliteStart: 4, lastColumn: 5, lastLine: 6 },
                 { type: "error", message: "no?", extract: "x", hiliteStart: 9, lastColumn: 8, lastLine: 7 },
             ];
-            const a = { path: "chock.html", siteToSource: noOpSiteToSource, messages: m };
+            const a = { path: "chock.html", project: p, siteToSource: noOpSiteToSource, messages: m };
             const c = htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
@@ -88,9 +94,10 @@ describe("htmlValidator", () => {
         });
 
         it("categorizes css and svg", () => {
+            const p = InMemoryProject.of();
             const m: any[] = [{ type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 }];
             ["css", "svg", "html"].forEach(t => {
-                const a = { path: `chock.${t}`, siteToSource: noOpSiteToSource, messages: m };
+                const a = { path: `chock.${t}`, project: p, siteToSource: noOpSiteToSource, messages: m };
                 const c = htmlValidatorMessagesToReviewComments(a);
                 const e = [
                     {
@@ -107,6 +114,7 @@ describe("htmlValidator", () => {
         });
 
         it("uses the provided site to source mapping", () => {
+            const p = InMemoryProject.of();
             const m: any[] = [
                 { type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 },
                 { type: "error", message: "huh?", extract: "x", hiliteStart: 4, lastColumn: 5, lastLine: 6 },
@@ -122,7 +130,7 @@ describe("htmlValidator", () => {
                     lineFrom1: (i.lineFrom1 || -1000) - 1,
                 };
             };
-            const a = { path: "_site/chock.html", siteToSource: s2s, messages: m };
+            const a = { path: "_site/chock.html", project: p, siteToSource: s2s, messages: m };
             const c = htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
