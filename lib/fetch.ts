@@ -115,7 +115,7 @@ function fetchResult(code: number, message: string, url: string): ExecuteGoalRes
     return {
         code,
         message,
-        externalUrls: [{ url }],
+        externalUrls: [{ label: url, url }],
     };
 }
 
