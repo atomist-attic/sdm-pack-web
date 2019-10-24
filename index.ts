@@ -15,7 +15,13 @@
  */
 
 export {
+    Fetch,
+    FetchRegistration,
+} from "./lib/fetch";
+export {
     htmlValidatorAutoInspection,
     runHtmlValidator,
+    RunHtmlValidatorOptions,
+    SiteLocationToSourceLocation,
 } from "./lib/htmlValidator";
 export { WebSupport } from "./lib/web";
