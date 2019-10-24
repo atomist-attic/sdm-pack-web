@@ -28,16 +28,16 @@ describe("htmlValidator", () => {
 
     describe("htmlValidatorMessagesToReviewComments", () => {
 
-        it("returns no comments when given no messages", () => {
-            [undefined, []].forEach((m: any) => {
+        it("returns no comments when given no messages", async () => {
+            for (const m of [undefined, []] as any[]) {
                 const p = InMemoryProject.of();
                 const a = { path: "chuck.html", project: p, siteToSource: noOpSiteToSource, messages: m };
-                const c = htmlValidatorMessagesToReviewComments(a);
+                const c = await htmlValidatorMessagesToReviewComments(a);
                 assert(c.length === 0);
-            });
+            }
         });
 
-        it("filters out non-warning info messages", () => {
+        it("filters out non-warning info messages", async () => {
             const p = InMemoryProject.of();
             const m: any[] = [
                 { type: "info", message: "what?" },
@@ -45,7 +45,7 @@ describe("htmlValidator", () => {
                 { type: "info", message: "no?", extract: "x", hiliteStart: 2, lastColumn: 2, lastLine: 2 },
             ];
             const a = { path: "chuck.html", project: p, siteToSource: noOpSiteToSource, messages: m };
-            const c = htmlValidatorMessagesToReviewComments(a);
+            const c = await htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
                     category: "html-validator",
@@ -58,7 +58,7 @@ describe("htmlValidator", () => {
             assert.deepStrictEqual(c, e);
         });
 
-        it("converts error messages to comments", () => {
+        it("converts error messages to comments", async () => {
             const p = InMemoryProject.of();
             const m: any[] = [
                 { type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 },
@@ -66,7 +66,7 @@ describe("htmlValidator", () => {
                 { type: "error", message: "no?", extract: "x", hiliteStart: 9, lastColumn: 8, lastLine: 7 },
             ];
             const a = { path: "chock.html", project: p, siteToSource: noOpSiteToSource, messages: m };
-            const c = htmlValidatorMessagesToReviewComments(a);
+            const c = await htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
                     category: "html-validator",
@@ -93,12 +93,12 @@ describe("htmlValidator", () => {
             assert.deepStrictEqual(c, e);
         });
 
-        it("categorizes css and svg", () => {
+        it("categorizes css and svg", async () => {
             const p = InMemoryProject.of();
             const m: any[] = [{ type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 }];
-            ["css", "svg", "html"].forEach(t => {
+            for (const t of ["css", "svg", "html"]) {
                 const a = { path: `chock.${t}`, project: p, siteToSource: noOpSiteToSource, messages: m };
-                const c = htmlValidatorMessagesToReviewComments(a);
+                const c = await htmlValidatorMessagesToReviewComments(a);
                 const e = [
                     {
                         category: "html-validator",
@@ -109,11 +109,11 @@ describe("htmlValidator", () => {
                     },
                 ];
                 assert.deepStrictEqual(c, e);
-            });
+            }
 
         });
 
-        it("uses the provided site to source mapping", () => {
+        it("uses the provided site to source mapping", async () => {
             const p = InMemoryProject.of();
             const m: any[] = [
                 { type: "error", message: "what?", extract: "x", hiliteStart: 0, lastColumn: 1, lastLine: 3 },
@@ -121,7 +121,7 @@ describe("htmlValidator", () => {
                 { type: "error", message: "no?", extract: "x", hiliteStart: 9, lastColumn: 8, lastLine: 7 },
             ];
             let transformed = false;
-            const s2s = (i: SourceLocation) => {
+            const s2s = async (i: SourceLocation) => {
                 transformed = true;
                 return {
                     path: i.path.replace(/^_site\//, "doc/"),
@@ -131,7 +131,7 @@ describe("htmlValidator", () => {
                 };
             };
             const a = { path: "_site/chock.html", project: p, siteToSource: s2s, messages: m };
-            const c = htmlValidatorMessagesToReviewComments(a);
+            const c = await htmlValidatorMessagesToReviewComments(a);
             const e = [
                 {
                     category: "html-validator",

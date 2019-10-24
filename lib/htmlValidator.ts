@@ -22,6 +22,7 @@ import {
     ProjectReview,
     projectUtils,
     ReviewComment,
+    Severity,
     SourceLocation,
 } from "@atomist/automation-client";
 import {
@@ -38,8 +39,8 @@ import * as path from "path";
  * Function that maps the path to a file in the site directory to the
  * path to a file in the source directory.
  */
-export type SiteLocationToSourceLocation = (s: SourceLocation, p: Project) => SourceLocation;
-export const noOpSiteToSource: SiteLocationToSourceLocation = s => s;
+export type SiteLocationToSourceLocation = (s: SourceLocation, p: Project) => Promise<SourceLocation>;
+export const noOpSiteToSource: SiteLocationToSourceLocation = async s => s;
 
 /** [[runHtmlValidator]] arguments. */
 export interface RunHtmlValidatorOptions {
@@ -92,7 +93,7 @@ export function runHtmlValidator(arg: RunHtmlValidatorOptions): CodeInspection<P
                 });
                 const siteToSource = arg.siteToSource || noOpSiteToSource;
                 const convertArgs = { messages: result.messages, path: f.path, project: p, siteToSource };
-                const comments = htmlValidatorMessagesToReviewComments(convertArgs);
+                const comments = await htmlValidatorMessagesToReviewComments(convertArgs);
                 review.comments.push(...comments);
             });
         } catch (e) {
@@ -152,21 +153,21 @@ export interface HtmlValidatorMessagesToReviewCommentsArgs {
  * @param messages html-validator response messages
  * @return Code inspection review comments
  */
-export function htmlValidatorMessagesToReviewComments(arg: HtmlValidatorMessagesToReviewCommentsArgs): ReviewComment[] {
+export async function htmlValidatorMessagesToReviewComments(arg: HtmlValidatorMessagesToReviewCommentsArgs): Promise<ReviewComment[]> {
     if (!arg.messages || arg.messages.length < 1) {
         return [];
     }
     const subcategory = (arg.path.endsWith(".css")) ? "css" : ((arg.path.endsWith(".svg")) ? "svg" : "html");
-    return arg.messages.filter(infoFilter).map(m => {
-        const sourceLocation = arg.siteToSource(createSourceLocation(arg.path, m), arg.project);
+    return Promise.all(arg.messages.filter(infoFilter).map(async m => {
+        const sourceLocation = await arg.siteToSource(createSourceLocation(arg.path, m), arg.project);
         return {
             category: "html-validator",
             detail: m.message,
-            severity: (m.subType === "warning") ? "warn" : "error",
+            severity: ((m.subType === "warning") ? "warn" : "error") as Severity,
             sourceLocation,
             subcategory,
         };
-    });
+    }));
 }
 
 /**
