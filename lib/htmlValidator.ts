@@ -216,11 +216,6 @@ function createSourceLocation(src: string, message: hv.ValidationMessageObject):
 /**
  * Test if message has location properties.
  */
-function hasLocation(m: hv.ValidationMessageObject): boolean {
-    return !!m.extract;
-}
-/*
 function hasLocation(m: hv.ValidationMessageObject): m is hv.ValidationMessageLocationObject {
     return !!(m as hv.ValidationMessageLocationObject).extract;
 }
-*/

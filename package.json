@@ -24,7 +24,7 @@
   "main": "./index.js",
   "types": "./index.d.ts",
   "dependencies": {
-    "@types/html-validator": "^4.1.1",
+    "@types/html-validator": "^5.0.0",
     "@types/node": "^12.11.2",
     "html-validator": "^5.0.0"
   },
