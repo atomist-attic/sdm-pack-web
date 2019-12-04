@@ -158,7 +158,7 @@ export async function htmlValidatorMessagesToReviewComments(arg: HtmlValidatorMe
         return [];
     }
     const subcategory = (arg.path.endsWith(".css")) ? "css" : ((arg.path.endsWith(".svg")) ? "svg" : "html");
-    return Promise.all(arg.messages.filter(infoFilter).map(async m => {
+    return Promise.all(arg.messages.filter(hvFilter).map(async m => {
         const sourceLocation = await arg.siteToSource(createSourceLocation(arg.path, m), arg.project);
         return {
             category: "html-validator",
@@ -171,18 +171,23 @@ export async function htmlValidatorMessagesToReviewComments(arg: HtmlValidatorMe
 }
 
 /**
- * Return false if messages is a non-warning info message, true
- * otherwise.  Use to filter out info messages that are not warnings.
+ * Return false if HTML validator message is not considered an issue.
+ * This function filters returns false for non-warning info message
+ * and parse errors.  Otherwise, it returns true.  Use to filter out
+ * info messages that do not require action.
  *
  * @param m Message to test
+ * @return false if validator message is not actionable
  */
-function infoFilter(m: hv.ValidationMessageObject): boolean {
+function hvFilter(m: hv.ValidationMessageObject): boolean {
     if (m.type === "info") {
         if (m.subType === "warning") {
             return true;
         } else {
             return false;
         }
+    } else if (m.message === "Parse Error") {
+        return false;
     } else {
         return true;
     }
