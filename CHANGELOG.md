@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased](https://github.com/atomist/sdm-pack-web/compare/0.1.0...HEAD)
 
+### Changed
+
+-   Filter out HTML validator parse errors. [693dd58](https://github.com/atomist/sdm-pack-web/commit/693dd585cdcdd24af293dd0c782632000469c1dd)
+
 ## [0.1.0](https://github.com/atomist/sdm-pack-web/tree/0.1.0) - 2019-10-25
 
 ### Added
