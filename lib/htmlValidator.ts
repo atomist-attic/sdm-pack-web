@@ -77,24 +77,30 @@ export function runHtmlValidator(arg: RunHtmlValidatorOptions): CodeInspection<P
         log.write(`Running html-validator on ${slug} at '${absPath}'`);
         try {
             await projectUtils.doWithFiles(p, `${arg.sitePath}/**/*.{html,css,svg}`, async f => {
-                log.write(`Processing ${f.path}...`);
-                const content = await f.getContent();
-                if (!content) {
-                    log.write(`No content in ${f.path}`);
-                    return;
+                try {
+                    log.write(`Processing ${f.path}...`);
+                    const content = await f.getContent();
+                    if (!content) {
+                        log.write(`No content in ${f.path}`);
+                        return;
+                    }
+                    const contentType = mimeType(f.path);
+                    const result = await hv({
+                        data: content,
+                        format: "json",
+                        headers: {
+                            "Content-Type": contentType,
+                        },
+                    });
+                    const siteToSource = arg.siteToSource || noOpSiteToSource;
+                    const convertArgs = { messages: result.messages, path: f.path, project: p, siteToSource };
+                    const comments = await htmlValidatorMessagesToReviewComments(convertArgs);
+                    review.comments.push(...comments);
+                } catch (e) {
+                    const msg = `Failed to run html-validator on '${slug}/${arg.sitePath}/${f.path}': ${e.message}`;
+                    logger.error(msg);
+                    log.write(msg);
                 }
-                const contentType = mimeType(f.path);
-                const result = await hv({
-                    data: content,
-                    format: "json",
-                    headers: {
-                        "Content-Type": contentType,
-                    },
-                });
-                const siteToSource = arg.siteToSource || noOpSiteToSource;
-                const convertArgs = { messages: result.messages, path: f.path, project: p, siteToSource };
-                const comments = await htmlValidatorMessagesToReviewComments(convertArgs);
-                review.comments.push(...comments);
             });
         } catch (e) {
             const msg = `Failed to run html-validator on ${slug} at '${absPath}': ${e.message}`;
@@ -186,7 +192,7 @@ function hvFilter(m: hv.ValidationMessageObject): boolean {
         } else {
             return false;
         }
-    } else if (m.message === "Parse Error") {
+    } else if (m.message === "Parse Error.") {
         return false;
     } else {
         return true;
